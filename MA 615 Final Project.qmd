@@ -1,0 +1,215 @@
+---
+title: "MA 615 Final Project: Dominican Republic"
+author: "Ruijian Maggie Lin"
+format:
+  pdf: default
+  pptx: default
+  html: default
+editor: visual
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(maps)
+library(WDI)
+library(patchwork)
+```
+
+### General Description of the Dominican Republic
+
+#### Location of the Dominican Republic
+
+Here is a map showing where the Dominican Republic is located in the world:
+
+```{r}
+# Get world map data
+world <- map_data("world")
+
+# Subset data for the Dominican Republic
+dominican <- world %>% filter(region == "Dominican Republic")
+
+# Plotting global map showing the location of the Dominican Republic
+global_map <- ggplot(data = world) +
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "gray90") +
+  geom_point(aes(x = -69.9, y = 18.7), color = "lightblue", size = 3) + # Coordinates for Dominican Republic
+  coord_fixed(1.1) +
+  theme_minimal() +
+  labs(title = "Global Location of the Dominican Republic")
+
+# Create the zoomed-in map for the Dominican Republic
+dr_map <- ggplot(data = dominican) +
+  geom_polygon(aes(x = long, y = lat, group = group), fill = "lightblue") +
+  coord_fixed(1.3) +
+  theme_minimal() +
+  labs(title = "Map of the Dominican Republic") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+# Combine the two plots side-by-side
+combined_map <- global_map + dr_map + plot_layout(ncol = 2)
+
+print(combined_map)
+```
+
+**Key Facts About the Dominican Republic**
+
+-   **Government:** The Dominican Republic is a democratic republic with a president as both the head of state and government.
+
+-   **Economy:** The Dominican Republic has one of the largest economies in the Caribbean, with key industries such as tourism, agriculture (e.g., sugar, coffee), and mining.
+
+-   **People:** The country has a population of approximately 11 million people, with a rich cultural heritage combining African, European, and indigenous influences.
+
+-   **Natural Environment:** The Dominican Republic is home to tropical rainforests, beautiful beaches, and the Caribbean’s highest mountain peak, Pico Duarte.
+
+-   **History:** It was the first European colony in the Americas, founded by Christopher Columbus in 1492.
+
+### Projection of a Key Variable: GDP of the Dominican Republic
+
+```{r}
+gdp_data <- WDI(country = "DOM", indicator = "NY.GDP.MKTP.CD", start = 1960, end = 2024)
+
+# Fit a linear regression model
+gdp_model <- lm(NY.GDP.MKTP.CD ~ year, data = gdp_data)
+
+# Create a new data frame with future years (e.g., 2024-2030)
+future_years <- data.frame(year = 2024:2030)
+
+# Predict GDP for the future years using the linear model
+future_gdp <- predict(gdp_model, newdata = future_years)
+
+# Combine the actual and projected GDP data
+projected_gdp_data <- data.frame(
+  year = c(gdp_data$year, future_years$year),
+  NY.GDP.MKTP.CD = c(gdp_data$NY.GDP.MKTP.CD, future_gdp),
+  type = c(rep("Actual", length(gdp_data$year)), rep("Projected", length(future_years$year)))
+)
+
+# Convert GDP to billions for easier comparison
+projected_gdp_data$NY.GDP.MKTP.CD <- projected_gdp_data$NY.GDP.MKTP.CD / 1e9  # Convert to billions
+
+# Plot the projected GDP data
+ggplot(projected_gdp_data, aes(x = year, y = NY.GDP.MKTP.CD, color = type)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Actual GDP (2010-2024) vs. Projected GDP (2024-2030) of the Dominican Republic",
+    x = "Year", y = "GDP (Billion current USD)") +
+  scale_x_continuous(breaks = seq(min(projected_gdp_data$year), 
+                                  max(projected_gdp_data$year), by = 2)) +
+  scale_color_manual(values = c("Actual" = "blue", "Projected" = "red"))
+```
+
+### Comparison of the Dominican Republic with Other Caribbean Island States
+
+```{r}
+# Define the list of Caribbean countries with ISO-2 codes
+countries_iso2 <- c("DO", "CU", "HT", "JM", "PR", "TT", "BB")
+
+# Set the indicators we want to pull from the World Bank
+indicators <- c("NY.GDP.MKTP.CD",   # GDP (current USD)
+                "SP.POP.TOTL",      # Population total
+                "ST.INT.ARVL")      # International tourism (arrivals)
+
+# Fetch the data for the selected countries from 2000 to 2020
+caribbean_data <- WDI(country = countries_iso2, indicator = indicators, start = 2010, end = 2024)
+
+# Rename columns for better readability
+caribbean_data <- caribbean_data %>%
+  rename(
+    country = country,
+    year = year,
+    gdp = NY.GDP.MKTP.CD,
+    population = SP.POP.TOTL,
+    tourists = ST.INT.ARVL
+  ) %>%
+  mutate(
+    gdp = gdp / 1e9,             # Convert GDP to billions
+    population = population / 1e6, # Convert population to millions
+    tourists = tourists / 1e6    # Convert tourists to millions
+  )
+
+# GDP comparison plot
+ggplot(caribbean_data, aes(x = reorder(country, gdp), y = gdp, fill = country)) +
+  geom_bar(stat = "identity") +
+  coord_flip() + 
+  labs(title = "GDP Comparison of Caribbean Island States (Billion USD)",
+       x = "Country", y = "GDP (Billion USD)") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3")
+
+# Population comparison plot
+ggplot(caribbean_data, aes(x = reorder(country, population), y = population, fill = country)) +
+  geom_bar(stat = "identity") +
+  coord_flip() + 
+  labs(title = "Population Comparison of Caribbean Island States (Millions)",
+       x = "Country", y = "Population (millions)") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3")
+
+# Tourism comparison plot
+ggplot(caribbean_data, aes(x = reorder(country, tourists), y = tourists, fill = country)) +
+  geom_bar(stat = "identity") +
+  coord_flip() + 
+  labs(title = "Tourism Comparison of Caribbean Island States (Millions)",
+       x = "Country", y = "Tourists (millions per year)") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set3")
+```
+
+The Dominican Republic, with a population of 10.9 million and a GDP of \$94.3 billion, stands out as one of the largest economies in the Caribbean.
+
+#### **Summary and Insights**:
+
+-   **GDP**: The Dominican Republic has the second-largest GDP in the Caribbean, following Puerto Rico.
+-   **Population**: It also has the third-largest population among Caribbean island nations in the dataset.
+-   **Tourism**: The Dominican Republic leads in tourism in the Caribbean, with 7 million visitors annually.
+
+### SWOT Analysis of the Dominican Republic
+
+**Strengths**
+
+-   Rich cultural heritage and tourism resources.
+
+-   Growing economy, especially in the tourism sector.
+
+-   Strategic location for trade.
+
+**Weaknesses**
+
+-   Income inequality.
+
+-   Vulnerability to natural disasters, particularly hurricanes.
+
+**Opportunities**
+
+-   Expansion of renewable energy projects.
+
+-   Growth in international trade and investment.
+
+**Threats**
+
+-   Climate change and its impact on agriculture.
+
+-   Political instability and corruption risks.
+
+### References
+
+Image source for Key Facts:
+
+-   Government: [https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTL6sBDS3B_FC6oclaGT-2kV1iA0leET1q2XAhFgzvDKwhFhLie](#0)
+
+-   Economy: [https://www.google.com/imgres?q=dominican%20republic%20economy&imgurl=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fe%2Fe3%2FSantoDomingoedit.JPG&imgrefurl=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FEconomy_of_the_Dominican_Republic&docid=yciL9Oq5THjl_M&tbnid=dlBOFVcPm2D1KM&vet=12ahUKEwjW5sH_r6GKAxV7MlkFHaIjJYIQM3oECF0QAA..i&w=2359&h=1325&hcb=2&ved=2ahUKEwjW5sH_r6GKAxV7MlkFHaIjJYIQM3oECF0QAA](#0)
+
+-   People: [https://www.google.com/imgres?q=dominican%20republic%20people&imgurl=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F0%2F06%2FDominican_Republic_People.JPG%2F300px-Dominican_Republic_People.JPG&imgrefurl=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FDominicans&docid=phd7j0kaRavQKM&tbnid=svCT_YZkKYqP4M&vet=12ahUKEwiav4KmsKGKAxVbMVkFHUsWNGoQM3oECB0QAA..i&w=300&h=225&hcb=2&ved=2ahUKEwiav4KmsKGKAxVbMVkFHUsWNGoQM3oECB0QAA](#0)
+
+-   Natural Environment: [https://www.google.com/imgres?q=dominican%20republic%20natural%20environment&imgurl=https%3A%2F%2Fsimplydominican.com%2Fwp-content%2Fuploads%2F2024%2F07%2FDiscover-the-national-parks-and-natural-wonders-of-the-Dominican-Republic.-275966484.jpg&imgrefurl=https%3A%2F%2Fsimplydominican.com%2Fdiscover-national-parks-natural-wonders-dominican-republic%2F&docid=Y447fw3Vvfvp3M&tbnid=BwE702EIkgnO0M&vet=12ahUKEwiz\_\_2xsKGKAxUxFFkFHfi4Ei0QM3oECEkQAA..i&w=1344&h=768&hcb=2&ved=2ahUKEwiz\_\_2xsKGKAxUxFFkFHfi4Ei0QM3oECEkQAA",](#0) History: [https://www.google.com/imgres?q=dominican%20republic%20natural%20history&imgurl=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2F4%2F43%2FDesangles_Colon_engrillado.jpg&imgrefurl=https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FHistory_of_the_Dominican_Republic&docid=27II5zZ--50ftM&tbnid=uAFvRHC7mBo-5M&vet=12ahUKEwjUj9jCsKGKAxVRFFkFHc-WA-AQM3oECHkQAA..i&w=708&h=532&hcb=2&ved=2ahUKEwjUj9jCsKGKAxVRFFkFHc-WA-AQM3oECHkQAA"](#0)
+
+SWOT Analysis:
+
+-   Strengths: [https://www.worldbank.org/en/country/dominicanrepublic/overview](#0)
+
+-   Weaknesses: [https://www.undrr.org/](#0)
+
+-   Opportunities: [https://www.irena.org/](#0)
+
+-   Threats: [https://unfccc.int/](#0)
